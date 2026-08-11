@@ -2,7 +2,12 @@
 // This runs on Vercel's servers, NOT in the browser — so the API key
 // stored in the ANTHROPIC_API_KEY environment variable is never exposed
 // to anyone visiting your site.
+import { createClient } from "@supabase/supabase-js";
 
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST requests are allowed." });
@@ -79,6 +84,18 @@ Rules:
 
     const clean = text.replace(/^```json\s*|^```\s*|```$/g, "").trim();
     const parsed = JSON.parse(clean);
+    // Save this run to Supabase (log errors but don't block the response)
+const { error: dbError } = await supabase.from("content_runs").insert({
+  source_channel: sourceChannel,
+  source_content: content,
+  signal_notes: signal || null,
+  target_channels: targets,
+  outputs: parsed,
+});
+
+if (dbError) {
+  console.error("Supabase insert error:", dbError);
+}
 
     return res.status(200).json({ result: parsed });
   } catch (err) {
