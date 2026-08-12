@@ -8,12 +8,13 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST requests are allowed." });
   }
 
-  const { sourceChannel, content, signal, targets } = req.body || {};
+  const { sourceChannel, content, signal, targets, voiceId, headlineMode } = req.body || {};
 
   if (!content || !Array.isArray(targets) || targets.length === 0) {
     return res.status(400).json({ error: "Missing content or target channels." });
@@ -37,10 +38,38 @@ export default async function handler(req, res) {
     .map((key) => `"${key}" (${CHANNEL_LABELS[key] || key})`)
     .join(", ");
 
-  const prompt = `You are a senior growth marketer at a B2B health technology company, repurposing a proven, high-performing piece of content into other marketing channels.
+  // Fetch the selected brand voice, if any
+  let voiceInstructions = "";
+  if (voiceId) {
+    const { data: voice, error: voiceError } = await supabase
+      .from("brand_voices")
+      .select("*")
+      .eq("id", voiceId)
+      .single();
+
+    if (!voiceError && voice) {
+      voiceInstructions = `
+BRAND VOICE TO APPLY: ${voice.name}
+Tone: ${voice.tone_description}
+Do: ${voice.dos}
+Don't: ${voice.donts}
+Example of this voice: "${voice.example_snippet}"
+Write every output in this voice consistently.`;
+    }
+  }
+
+  // Build headline-mode instructions, if enabled
+  const headlineModeInstructions = headlineMode
+    ? `
+HEADLINE MODE IS ON: Keep the body/core message of each output essentially the same across channels. Instead, for each channel generate a "headline" (a short hook/subject/opening line) with 3 alternative options, each labeled with its angle (e.g. "Stat-led", "Question hook", "Benefit-led"), followed by one shared body. Format each channel's output as: "HEADLINES:\\n1. [angle] ...\\n2. [angle] ...\\n3. [angle] ...\\n\\nBODY:\\n..."`
+    : "";
+
+  const prompt = `You are a senior growth marketer repurposing a proven, high-performing piece of content into other marketing channels.
 
 SOURCE CHANNEL: ${sourceChannel || "unspecified"}
 WHY IT WORKED (signal from the marketer, may be blank): ${signal || "Not specified — infer likely reasons from the content itself."}
+${voiceInstructions}
+${headlineModeInstructions}
 
 SOURCE CONTENT:
 """
@@ -84,18 +113,21 @@ Rules:
 
     const clean = text.replace(/^```json\s*|^```\s*|```$/g, "").trim();
     const parsed = JSON.parse(clean);
-    // Save this run to Supabase (log errors but don't block the response)
-const { error: dbError } = await supabase.from("content_runs").insert({
-  source_channel: sourceChannel,
-  source_content: content,
-  signal_notes: signal || null,
-  target_channels: targets,
-  outputs: parsed,
-});
 
-if (dbError) {
-  console.error("Supabase insert error:", dbError);
-}
+    // Save this run to Supabase (log errors but don't block the response)
+    const { error: dbError } = await supabase.from("content_runs").insert({
+      source_channel: sourceChannel,
+      source_content: content,
+      signal_notes: signal || null,
+      target_channels: targets,
+      outputs: parsed,
+      voice_id: voiceId || null,
+      headline_mode: !!headlineMode,
+    });
+
+    if (dbError) {
+      console.error("Supabase insert error:", dbError);
+    }
 
     return res.status(200).json({ result: parsed });
   } catch (err) {

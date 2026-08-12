@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Linkedin,
   Twitter,
@@ -30,7 +30,12 @@ const CHANNELS = [
   { key: "educational", label: "Educational Script", icon: PlayCircle },
 ];
 
-const DEFAULT_TARGETS = ["linkedin_post", "twitter_thread", "email", "sms"];
+const DEFAULT_TARGETS = [
+  "linkedin_post",
+  "twitter_thread",
+  "email",
+  "sms",
+];
 
 function timestamp() {
   return new Date()
@@ -54,13 +59,28 @@ export default function App() {
   const [error, setError] = useState("");
   const [copiedKey, setCopiedKey] = useState("");
 
+  const [voices, setVoices] = useState([]);
+  const [selectedVoice, setSelectedVoice] = useState("");
+  const [headlineMode, setHeadlineMode] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/voices")
+      .then((res) => res.json())
+      .then((data) => setVoices(data.voices || []))
+      .catch(() => setVoices([]));
+  }, []);
+
   const toggleTarget = (key) => {
     setTargets((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+      prev.includes(key)
+        ? prev.filter((k) => k !== key)
+        : [...prev, key]
     );
   };
 
-  const availableTargets = CHANNELS.filter((c) => c.key !== sourceChannel);
+  const availableTargets = CHANNELS.filter(
+    (c) => c.key !== sourceChannel
+  );
 
   const handleCopy = (key, text) => {
     navigator.clipboard.writeText(text);
@@ -70,10 +90,12 @@ export default function App() {
 
   const runRepurpose = async () => {
     setError("");
+
     if (!content.trim()) {
       setError("Paste the winning content piece first.");
       return;
     }
+
     if (targets.length === 0) {
       setError("Select at least one destination channel.");
       return;
@@ -86,7 +108,14 @@ export default function App() {
       const response = await fetch("/api/repurpose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceChannel, content, signal, targets }),
+        body: JSON.stringify({
+          sourceChannel,
+          content,
+          signal,
+          targets,
+          voiceId: selectedVoice || null,
+          headlineMode,
+        }),
       });
 
       const data = await response.json();
@@ -116,18 +145,40 @@ export default function App() {
       }}
     >
       <div style={{ maxWidth: 1100, margin: "0 auto 28px" }}>
-        <div className="crs-mono" style={{ fontSize: 11, color: "#2F6F65", marginBottom: 6 }}>
+        <div
+          className="crs-mono"
+          style={{
+            fontSize: 11,
+            color: "#2F6F65",
+            marginBottom: 6,
+          }}
+        >
           WIRE DESK // CONTENT REPURPOSING
         </div>
+
         <h1
           className="crs-serif"
-          style={{ fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 700, margin: 0, lineHeight: 1.1 }}
+          style={{
+            fontSize: "clamp(28px, 4vw, 40px)",
+            fontWeight: 700,
+            margin: 0,
+            lineHeight: 1.1,
+          }}
         >
           One winning piece. Every channel it deserves.
         </h1>
-        <p style={{ color: "#5B5749", fontSize: 15, marginTop: 8, maxWidth: 620 }}>
-          Paste the content that's already proven to work. Pick where it should go next.
-          The desk drafts channel-native versions, ready to review and send.
+
+        <p
+          style={{
+            color: "#5B5749",
+            fontSize: 15,
+            marginTop: 8,
+            maxWidth: 620,
+          }}
+        >
+          Paste the content that's already proven to work. Pick where it should
+          go next. The desk drafts channel-native versions, ready to review and
+          send.
         </p>
       </div>
 
@@ -150,9 +201,18 @@ export default function App() {
             height: "fit-content",
           }}
         >
-          <label className="crs-mono" style={{ fontSize: 11, color: "#8A8371", display: "block", marginBottom: 6 }}>
+          <label
+            className="crs-mono"
+            style={{
+              fontSize: 11,
+              color: "#8A8371",
+              display: "block",
+              marginBottom: 6,
+            }}
+          >
             SOURCE CHANNEL
           </label>
+
           <select
             value={sourceChannel}
             onChange={(e) => setSourceChannel(e.target.value)}
@@ -174,9 +234,18 @@ export default function App() {
             ))}
           </select>
 
-          <label className="crs-mono" style={{ fontSize: 11, color: "#8A8371", display: "block", marginBottom: 6 }}>
+          <label
+            className="crs-mono"
+            style={{
+              fontSize: 11,
+              color: "#8A8371",
+              display: "block",
+              marginBottom: 6,
+            }}
+          >
             WINNING CONTENT
           </label>
+
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
@@ -197,9 +266,18 @@ export default function App() {
             }}
           />
 
-          <label className="crs-mono" style={{ fontSize: 11, color: "#8A8371", display: "block", marginBottom: 6 }}>
+          <label
+            className="crs-mono"
+            style={{
+              fontSize: 11,
+              color: "#8A8371",
+              display: "block",
+              marginBottom: 6,
+            }}
+          >
             WHY IT WORKED (optional)
           </label>
+
           <input
             value={signal}
             onChange={(e) => setSignal(e.target.value)}
@@ -217,13 +295,83 @@ export default function App() {
             }}
           />
 
-          <label className="crs-mono" style={{ fontSize: 11, color: "#8A8371", display: "block", marginBottom: 8 }}>
+          <label
+            className="crs-mono"
+            style={{
+              fontSize: 11,
+              color: "#8A8371",
+              display: "block",
+              marginBottom: 6,
+            }}
+          >
+            BRAND VOICE
+          </label>
+
+          <select
+            value={selectedVoice}
+            onChange={(e) => setSelectedVoice(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              border: "1px solid #CFC7B8",
+              borderRadius: 3,
+              background: "#F7F3EC",
+              fontSize: 14,
+              marginBottom: 12,
+              fontFamily: "inherit",
+            }}
+          >
+            <option value="">No specific voice</option>
+
+            {voices.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 13,
+              marginBottom: 18,
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={headlineMode}
+              onChange={(e) => setHeadlineMode(e.target.checked)}
+            />
+            Headline variants only (keep body the same, vary the hook)
+          </label>
+
+          <label
+            className="crs-mono"
+            style={{
+              fontSize: 11,
+              color: "#8A8371",
+              display: "block",
+              marginBottom: 8,
+            }}
+          >
             SEND TO
           </label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 20 }}>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 6,
+              marginBottom: 20,
+            }}
+          >
             {availableTargets.map((c) => {
               const Icon = c.icon;
               const active = targets.includes(c.key);
+
               return (
                 <button
                   key={c.key}
@@ -283,7 +431,17 @@ export default function App() {
             )}
           </button>
 
-          {error && <div style={{ marginTop: 12, fontSize: 12.5, color: "#B4472F" }}>{error}</div>}
+          {error && (
+            <div
+              style={{
+                marginTop: 12,
+                fontSize: 12.5,
+                color: "#B4472F",
+              }}
+            >
+              {error}
+            </div>
+          )}
         </div>
 
         <div>
@@ -298,7 +456,10 @@ export default function App() {
                 fontSize: 14,
               }}
             >
-              <Radio size={22} style={{ marginBottom: 10, opacity: 0.6 }} />
+              <Radio
+                size={22}
+                style={{ marginBottom: 10, opacity: 0.6 }}
+              />
               <div>Dispatches will appear here once you run the desk.</div>
             </div>
           )}
@@ -314,9 +475,15 @@ export default function App() {
                 fontSize: 14,
               }}
             >
-              <Loader2 size={20} className="crs-spin" style={{ marginBottom: 10 }} />
+              <Loader2
+                size={20}
+                className="crs-spin"
+                style={{ marginBottom: 10 }}
+              />
+
               <div>
-                Repurposing across {targets.length} channel{targets.length > 1 ? "s" : ""}...
+                Repurposing across {targets.length} channel
+                {targets.length > 1 ? "s" : ""}...
               </div>
             </div>
           )}
@@ -326,9 +493,18 @@ export default function App() {
               {targets.map((key) => {
                 const meta = CHANNELS.find((c) => c.key === key);
                 const Icon = meta?.icon || Radio;
-                const text = outputs[key] || "No output generated for this channel.";
+                const text =
+                  outputs[key] || "No output generated for this channel.";
+
                 return (
-                  <div key={key} className="crs-card" style={{ borderRadius: 4, padding: "18px 18px 16px" }}>
+                  <div
+                    key={key}
+                    className="crs-card"
+                    style={{
+                      borderRadius: 4,
+                      padding: "18px 18px 16px",
+                    }}
+                  >
                     <div
                       style={{
                         display: "flex",
@@ -339,16 +515,43 @@ export default function App() {
                         borderBottom: "1px solid #EFEAE0",
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
                         <Icon size={15} color="#2F6F65" />
-                        <span className="crs-mono" style={{ fontSize: 11, color: "#2F6F65" }}>
+
+                        <span
+                          className="crs-mono"
+                          style={{
+                            fontSize: 11,
+                            color: "#2F6F65",
+                          }}
+                        >
                           TO: {meta?.label?.toUpperCase()}
                         </span>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span className="crs-mono" style={{ fontSize: 10, color: "#B4AC98" }}>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                        }}
+                      >
+                        <span
+                          className="crs-mono"
+                          style={{
+                            fontSize: 10,
+                            color: "#B4AC98",
+                          }}
+                        >
                           {timestamp()}
                         </span>
+
                         <button
                           onClick={() => handleCopy(key, text)}
                           style={{
@@ -364,12 +567,26 @@ export default function App() {
                             cursor: "pointer",
                           }}
                         >
-                          {copiedKey === key ? <Check size={12} /> : <Copy size={12} />}
+                          {copiedKey === key ? (
+                            <Check size={12} />
+                          ) : (
+                            <Copy size={12} />
+                          )}
+
                           {copiedKey === key ? "Copied" : "Copy"}
                         </button>
                       </div>
                     </div>
-                    <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.6 }}>{text}</div>
+
+                    <div
+                      style={{
+                        whiteSpace: "pre-wrap",
+                        fontSize: 13.5,
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      {text}
+                    </div>
                   </div>
                 );
               })}
