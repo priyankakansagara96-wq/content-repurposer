@@ -14,7 +14,9 @@ import {
   Copy,
   Check,
   ArrowRight,
+  LayoutDashboard,
 } from "lucide-react";
+import Dashboard from "./Dashboard.jsx";
 
 const CHANNELS = [
   { key: "blog", label: "Blog Post", icon: Newspaper },
@@ -63,6 +65,8 @@ export default function App() {
   const [selectedVoice, setSelectedVoice] = useState("");
   const [headlineMode, setHeadlineMode] = useState(false);
 
+  const [view, setView] = useState("tool");
+
   useEffect(() => {
     fetch("/api/voices")
       .then((res) => res.json())
@@ -79,7 +83,7 @@ export default function App() {
   };
 
   const availableTargets = CHANNELS.filter(
-    (c) => c.key !== sourceChannel
+    (channel) => channel.key !== sourceChannel
   );
 
   const handleCopy = (key, text) => {
@@ -134,6 +138,10 @@ export default function App() {
     }
   };
 
+  if (view === "dashboard") {
+    return <Dashboard onBack={() => setView("tool")} />;
+  }
+
   return (
     <div
       style={{
@@ -180,6 +188,26 @@ export default function App() {
           go next. The desk drafts channel-native versions, ready to review and
           send.
         </p>
+
+        <button
+          onClick={() => setView("dashboard")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            marginTop: 14,
+            background: "transparent",
+            border: "1px solid #CFC7B8",
+            borderRadius: 20,
+            padding: "6px 12px",
+            fontSize: 12.5,
+            color: "#2F6F65",
+            cursor: "pointer",
+          }}
+        >
+          <LayoutDashboard size={13} />
+          View Dashboard
+        </button>
       </div>
 
       <div
@@ -227,9 +255,9 @@ export default function App() {
               fontFamily: "inherit",
             }}
           >
-            {CHANNELS.map((c) => (
-              <option key={c.key} value={c.key}>
-                {c.label}
+            {CHANNELS.map((channel) => (
+              <option key={channel.key} value={channel.key}>
+                {channel.label}
               </option>
             ))}
           </select>
@@ -323,9 +351,9 @@ export default function App() {
           >
             <option value="">No specific voice</option>
 
-            {voices.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
+            {voices.map((voice) => (
+              <option key={voice.id} value={voice.id}>
+                {voice.name}
               </option>
             ))}
           </select>
@@ -368,14 +396,14 @@ export default function App() {
               marginBottom: 20,
             }}
           >
-            {availableTargets.map((c) => {
-              const Icon = c.icon;
-              const active = targets.includes(c.key);
+            {availableTargets.map((channel) => {
+              const Icon = channel.icon;
+              const active = targets.includes(channel.key);
 
               return (
                 <button
-                  key={c.key}
-                  onClick={() => toggleTarget(c.key)}
+                  key={channel.key}
+                  onClick={() => toggleTarget(channel.key)}
                   className={`crs-chip ${active ? "active" : ""}`}
                   style={{
                     display: "flex",
@@ -392,7 +420,7 @@ export default function App() {
                   }}
                 >
                   <Icon size={13} />
-                  {c.label}
+                  {channel.label}
                 </button>
               );
             })}
@@ -491,7 +519,7 @@ export default function App() {
           {outputs && (
             <div style={{ display: "grid", gap: 16 }}>
               {targets.map((key) => {
-                const meta = CHANNELS.find((c) => c.key === key);
+                const meta = CHANNELS.find((channel) => channel.key === key);
                 const Icon = meta?.icon || Radio;
                 const text =
                   outputs[key] || "No output generated for this channel.";
