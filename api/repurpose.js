@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Only POST requests are allowed." });
   }
 
-  const { sourceChannel, content, signal, targets, voiceId, headlineMode } = req.body || {};
+  const { sourceChannel, content, signal, targets, voiceId, headlineMode, variantMode } = req.body || {};
 
   if (!content || !Array.isArray(targets) || targets.length === 0) {
     return res.status(400).json({ error: "Missing content or target channels." });
@@ -64,12 +64,19 @@ Write every output in this voice consistently.`;
 HEADLINE MODE IS ON: Keep the body/core message of each output essentially the same across channels. Instead, for each channel generate a "headline" (a short hook/subject/opening line) with 3 alternative options, each labeled with its angle (e.g. "Stat-led", "Question hook", "Benefit-led"), followed by one shared body. Format each channel's output as: "HEADLINES:\\n1. [angle] ...\\n2. [angle] ...\\n3. [angle] ...\\n\\nBODY:\\n..."`
     : "";
 
+  // Build variant-mode instructions, if enabled
+  const variantModeInstructions = variantMode
+    ? `
+VARIANT MODE IS ON: For each channel, generate TWO full alternative versions of the entire piece (not just the headline) — each taking a different angle (e.g. one stat/data-led, one story/emotion-led, or one problem-led vs one benefit-led). Label each with a short 2-4 word angle name.`
+    : "";
+
   const prompt = `You are a senior growth marketer repurposing a proven, high-performing piece of content into other marketing channels.
 
 SOURCE CHANNEL: ${sourceChannel || "unspecified"}
 WHY IT WORKED (signal from the marketer, may be blank): ${signal || "Not specified — infer likely reasons from the content itself."}
 ${voiceInstructions}
 ${headlineModeInstructions}
+${variantModeInstructions}
 
 SOURCE CONTENT:
 """
@@ -82,7 +89,11 @@ Rules:
 - Preserve the core message, proof points, and any stats/claims exactly as given — do not invent new facts or numbers.
 - Adapt tone, length, and format to fit native conventions of each channel (e.g. LinkedIn = professional narrative hook, X thread = numbered short punchy tweets separated by newlines, SMS = under 160 characters with a clear CTA, Google/LinkedIn/Meta Ads = a headline line and a description line clearly labeled, Email = subject line then body, Educational script = short spoken-style script with scene/beat markers).
 - Keep each output tight and ready to publish, not a description of what you would write.
-- Respond ONLY with valid minified JSON, no markdown fences, no preamble. Shape: {"channel_key": "content string", ...} using exactly these keys: ${targets.map((t) => `"${t}"`).join(", ")}.`;
+- Respond ONLY with valid minified JSON, no markdown fences, no preamble.${
+    variantMode
+      ? ` Shape: {"channel_key": {"variant_a": {"angle": "short label", "content": "..."}, "variant_b": {"angle": "short label", "content": "..."}}, ...} using exactly these keys: ${targets.map((t) => `"${t}"`).join(", ")}.`
+      : ` Shape: {"channel_key": "content string", ...} using exactly these keys: ${targets.map((t) => `"${t}"`).join(", ")}.`
+  }`;
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -123,6 +134,7 @@ Rules:
       outputs: parsed,
       voice_id: voiceId || null,
       headline_mode: !!headlineMode,
+      variant_mode: !!variantMode,
     });
 
     if (dbError) {

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Dashboard from "./Dashboard.jsx";
 
+
 const CHANNELS = [
   { key: "blog", label: "Blog Post", icon: Newspaper },
   { key: "linkedin_post", label: "LinkedIn Post", icon: Linkedin },
@@ -32,12 +33,14 @@ const CHANNELS = [
   { key: "educational", label: "Educational Script", icon: PlayCircle },
 ];
 
+
 const DEFAULT_TARGETS = [
   "linkedin_post",
   "twitter_thread",
   "email",
   "sms",
 ];
+
 
 function timestamp() {
   return new Date()
@@ -51,6 +54,7 @@ function timestamp() {
     .toUpperCase();
 }
 
+
 export default function App() {
   const [sourceChannel, setSourceChannel] = useState("blog");
   const [content, setContent] = useState("");
@@ -61,11 +65,15 @@ export default function App() {
   const [error, setError] = useState("");
   const [copiedKey, setCopiedKey] = useState("");
 
+
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState("");
   const [headlineMode, setHeadlineMode] = useState(false);
+  const [variantMode, setVariantMode] = useState(false);
+
 
   const [view, setView] = useState("tool");
+
 
   useEffect(() => {
     fetch("/api/voices")
@@ -73,6 +81,7 @@ export default function App() {
       .then((data) => setVoices(data.voices || []))
       .catch(() => setVoices([]));
   }, []);
+
 
   const toggleTarget = (key) => {
     setTargets((prev) =>
@@ -82,9 +91,11 @@ export default function App() {
     );
   };
 
+
   const availableTargets = CHANNELS.filter(
     (channel) => channel.key !== sourceChannel
   );
+
 
   const handleCopy = (key, text) => {
     navigator.clipboard.writeText(text);
@@ -92,21 +103,26 @@ export default function App() {
     setTimeout(() => setCopiedKey(""), 1500);
   };
 
+
   const runRepurpose = async () => {
     setError("");
+
 
     if (!content.trim()) {
       setError("Paste the winning content piece first.");
       return;
     }
 
+
     if (targets.length === 0) {
       setError("Select at least one destination channel.");
       return;
     }
 
+
     setLoading(true);
     setOutputs(null);
+
 
     try {
       const response = await fetch("/api/repurpose", {
@@ -119,14 +135,17 @@ export default function App() {
           targets,
           voiceId: selectedVoice || null,
           headlineMode,
+          variantMode,
         }),
       });
 
       const data = await response.json();
 
+
       if (!response.ok) {
         throw new Error(data.error || "Request failed");
       }
+
 
       setOutputs(data.result);
     } catch (e) {
@@ -138,9 +157,11 @@ export default function App() {
     }
   };
 
+
   if (view === "dashboard") {
     return <Dashboard onBack={() => setView("tool")} />;
   }
+
 
   return (
     <div
@@ -164,6 +185,7 @@ export default function App() {
           WIRE DESK // CONTENT REPURPOSING
         </div>
 
+
         <h1
           className="crs-serif"
           style={{
@@ -175,6 +197,7 @@ export default function App() {
         >
           One winning piece. Every channel it deserves.
         </h1>
+
 
         <p
           style={{
@@ -188,6 +211,7 @@ export default function App() {
           go next. The desk drafts channel-native versions, ready to review and
           send.
         </p>
+
 
         <button
           onClick={() => setView("dashboard")}
@@ -209,6 +233,7 @@ export default function App() {
           View Dashboard
         </button>
       </div>
+
 
       <div
         style={{
@@ -241,6 +266,7 @@ export default function App() {
             SOURCE CHANNEL
           </label>
 
+
           <select
             value={sourceChannel}
             onChange={(e) => setSourceChannel(e.target.value)}
@@ -262,6 +288,7 @@ export default function App() {
             ))}
           </select>
 
+
           <label
             className="crs-mono"
             style={{
@@ -273,6 +300,7 @@ export default function App() {
           >
             WINNING CONTENT
           </label>
+
 
           <textarea
             value={content}
@@ -294,6 +322,7 @@ export default function App() {
             }}
           />
 
+
           <label
             className="crs-mono"
             style={{
@@ -305,6 +334,7 @@ export default function App() {
           >
             WHY IT WORKED (optional)
           </label>
+
 
           <input
             value={signal}
@@ -323,6 +353,7 @@ export default function App() {
             }}
           />
 
+
           <label
             className="crs-mono"
             style={{
@@ -334,6 +365,7 @@ export default function App() {
           >
             BRAND VOICE
           </label>
+
 
           <select
             value={selectedVoice}
@@ -351,12 +383,14 @@ export default function App() {
           >
             <option value="">No specific voice</option>
 
+
             {voices.map((voice) => (
               <option key={voice.id} value={voice.id}>
                 {voice.name}
               </option>
             ))}
           </select>
+
 
           <label
             style={{
@@ -376,6 +410,26 @@ export default function App() {
             Headline variants only (keep body the same, vary the hook)
           </label>
 
+
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 13,
+              marginBottom: 18,
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={variantMode}
+              onChange={(e) => setVariantMode(e.target.checked)}
+            />
+            Generate 2 A/B variants per channel
+          </label>
+
+
           <label
             className="crs-mono"
             style={{
@@ -388,6 +442,7 @@ export default function App() {
             SEND TO
           </label>
 
+
           <div
             style={{
               display: "flex",
@@ -399,6 +454,7 @@ export default function App() {
             {availableTargets.map((channel) => {
               const Icon = channel.icon;
               const active = targets.includes(channel.key);
+
 
               return (
                 <button
@@ -425,6 +481,7 @@ export default function App() {
               );
             })}
           </div>
+
 
           <button
             onClick={runRepurpose}
@@ -459,6 +516,7 @@ export default function App() {
             )}
           </button>
 
+
           {error && (
             <div
               style={{
@@ -471,6 +529,7 @@ export default function App() {
             </div>
           )}
         </div>
+
 
         <div>
           {!outputs && !loading && (
@@ -492,6 +551,7 @@ export default function App() {
             </div>
           )}
 
+
           {loading && (
             <div
               style={{
@@ -509,12 +569,14 @@ export default function App() {
                 style={{ marginBottom: 10 }}
               />
 
+
               <div>
                 Repurposing across {targets.length} channel
                 {targets.length > 1 ? "s" : ""}...
               </div>
             </div>
           )}
+
 
           {outputs && (
             <div style={{ display: "grid", gap: 16 }}>
@@ -523,6 +585,7 @@ export default function App() {
                 const Icon = meta?.icon || Radio;
                 const text =
                   outputs[key] || "No output generated for this channel.";
+
 
                 return (
                   <div
@@ -552,6 +615,7 @@ export default function App() {
                       >
                         <Icon size={15} color="#2F6F65" />
 
+
                         <span
                           className="crs-mono"
                           style={{
@@ -562,6 +626,7 @@ export default function App() {
                           TO: {meta?.label?.toUpperCase()}
                         </span>
                       </div>
+
 
                       <div
                         style={{
@@ -580,8 +645,16 @@ export default function App() {
                           {timestamp()}
                         </span>
 
+
                         <button
-                          onClick={() => handleCopy(key, text)}
+                          onClick={() =>
+                            handleCopy(
+                              key,
+                              outputs[key]?.variant_a
+                                ? `VARIANT A (${outputs[key].variant_a.angle}):\n${outputs[key].variant_a.content}\n\nVARIANT B (${outputs[key].variant_b.angle}):\n${outputs[key].variant_b.content}`
+                                : text
+                            )
+                          }
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -601,20 +674,35 @@ export default function App() {
                             <Copy size={12} />
                           )}
 
+
                           {copiedKey === key ? "Copied" : "Copy"}
                         </button>
                       </div>
                     </div>
 
-                    <div
-                      style={{
-                        whiteSpace: "pre-wrap",
-                        fontSize: 13.5,
-                        lineHeight: 1.6,
-                      }}
-                    >
-                      {text}
-                    </div>
+
+                    {outputs[key]?.variant_a ? (
+                      <div style={{ display: "grid", gap: 14 }}>
+                        {["variant_a", "variant_b"].map((vKey) => {
+                          const variant = outputs[key][vKey];
+                          if (!variant) return null;
+                          return (
+                            <div key={vKey} style={{ paddingTop: vKey === "variant_b" ? 12 : 0, borderTop: vKey === "variant_b" ? "1px solid #EFEAE0" : "none" }}>
+                              <div className="crs-mono" style={{ fontSize: 10, color: "#D98E3B", marginBottom: 4 }}>
+                                {vKey === "variant_a" ? "VARIANT A" : "VARIANT B"} — {variant.angle?.toUpperCase()}
+                              </div>
+                              <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.6 }}>
+                                {variant.content}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.6 }}>
+                        {text}
+                      </div>
+                    )}
                   </div>
                 );
               })}
