@@ -125,23 +125,28 @@ Rules:
     const clean = text.replace(/^```json\s*|^```\s*|```$/g, "").trim();
     const parsed = JSON.parse(clean);
 
-    // Save this run to Supabase (log errors but don't block the response)
-    const { error: dbError } = await supabase.from("content_runs").insert({
-      source_channel: sourceChannel,
-      source_content: content,
-      signal_notes: signal || null,
-      target_channels: targets,
-      outputs: parsed,
-      voice_id: voiceId || null,
-      headline_mode: !!headlineMode,
-      variant_mode: !!variantMode,
-    });
+    // Save this run to Supabase and get back its ID, so the frontend can
+    // later update this exact row (edits, regenerated channels, etc.)
+    const { data: inserted, error: dbError } = await supabase
+      .from("content_runs")
+      .insert({
+        source_channel: sourceChannel,
+        source_content: content,
+        signal_notes: signal || null,
+        target_channels: targets,
+        outputs: parsed,
+        voice_id: voiceId || null,
+        headline_mode: !!headlineMode,
+        variant_mode: !!variantMode,
+      })
+      .select()
+      .single();
 
     if (dbError) {
       console.error("Supabase insert error:", dbError);
     }
 
-    return res.status(200).json({ result: parsed });
+    return res.status(200).json({ result: parsed, runId: inserted?.id || null });
   } catch (err) {
     console.error("Server error:", err);
     return res.status(500).json({ error: "Something went wrong generating the content." });
